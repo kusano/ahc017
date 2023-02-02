@@ -5,6 +5,8 @@
 #include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
+#include <utility>
 using namespace std;
 using namespace std::chrono;
 
@@ -27,6 +29,8 @@ struct City
     vector<int> C;
     // 中央にもっとも近い頂点。
     int cp;
+    vector<long long> undo_dist0, undo_dist1;
+    int undo_d;
 
     City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W, const vector<int> &X, const vector<int> &Y)
         : N(N)
@@ -42,6 +46,8 @@ struct City
         , dist(D+1, vector<long long>(N))
         , F(D+1)
         , C(D)
+        , undo_dist0(N)
+        , undo_dist1(N)
     {
         for (int i=0; i<M; i++)
         {
@@ -66,16 +72,36 @@ struct City
 
     void set(int m, int d)
     {
-        if (R[m]==d)
-            return;
-
         C[R[m]]--;
         int old = R[m];
         R[m] = d;
         C[R[m]]++;
 
+        undo_dist0 = dist[old];
+        undo_dist1 = dist[d];
+        undo_d = old;
+
         update_dist(old);
         update_dist(d);
+    }
+
+    void undo(int m)
+    {
+        C[R[m]]--;
+        int old = R[m];
+        R[m] = undo_d;
+        C[R[m]]++;
+
+        dist[undo_d] = undo_dist0;
+        dist[old] = undo_dist1;
+
+        this->F[undo_d] = 0;
+        this->F[old] = 0;
+        for (int p=0; p<N; p++)
+        {
+            this->F[undo_d] += dist[undo_d][p]-dist[D][p];
+            this->F[old] += dist[old][p]-dist[D][p];
+        }
     }
 
     void update_dist(int k)
@@ -268,12 +294,27 @@ int main()
         }
         else
         {
-            city.set(m, old_d);
+            city.undo(m);
         }
     }
 
+    // 多い順に置き換える。
+    vector<int> CC(D);
+    for (int r: best_R)
+        CC[r]++;
+    vector<pair<int, int>> VV;
+    for (int i=0; i<D; i++)
+        VV.push_back({CC[i], i});
+    sort(VV.begin(), VV.end());
+    for (int i=0; i<M; i++)
+        best_R[i] = VV[best_R[i]].second;
+
 #ifdef TOPCODER_LOCAL
     //cerr<<"Time: "<<chrono::duration_cast<chrono::nanoseconds>(system_clock::now()-start).count()*1e-9<<endl;
+
+    //for (auto v: VV)
+    //    cerr<<" "<<v.first;
+    //cerr<<endl;
 
     city.R = best_R;
     fprintf(stderr, " %4d %4d %2d %3d %8d %16lld %16lld\n", N, M, D, K, iter, best_score, city.calc_score_orig());
