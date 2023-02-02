@@ -2,7 +2,7 @@
 
 set -e
 
-g++ -O2 -o A A.cpp
+g++ -O2 -o A -DTOPCODER_LOCAL=1 A.cpp
 for i in $(seq 0 99)
 do
   f=$(printf %04d $i).txt

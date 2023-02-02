@@ -19,12 +19,16 @@ struct City
     vector<vector<int>> E;
     vector<vector<int>> Ei;
     vector<long long> W;
+    vector<int> X;
+    vector<int> Y;
     vector<int> R;
-    vector<vector<vector<long long>>> dist;
+    vector<vector<long long>> dist;
     vector<long long> F; // *N(N-1)
     vector<int> C;
+    // 中央にもっとも近い頂点。
+    int cp;
 
-    City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W)
+    City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W, const vector<int> &X, const vector<int> &Y)
         : N(N)
         , M(M)
         , D(D)
@@ -32,8 +36,10 @@ struct City
         , E(N)
         , Ei(N)
         , W(W)
+        , X(X)
+        , Y(Y)
         , R(M)
-        , dist(D+1, vector<vector<long long>>(N, vector<long long>(N)))
+        , dist(D+1, vector<long long>(N))
         , F(D+1)
         , C(D)
     {
@@ -47,6 +53,11 @@ struct City
             R[i] = i%D;
             C[R[i]]++;
         }
+
+        cp = 0;
+        for (int p=1; p<N; p++)
+            if ((X[p]-500)*(X[p]-500)+(Y[p]-500)*(Y[p]-500) < (X[cp]-500)*(X[cp]-500)+(Y[cp]-500)*(Y[cp]-500))
+                cp = p;
 
         update_dist(D);
         for (int d=0; d<D; d++)
@@ -69,56 +80,57 @@ struct City
 
     void update_dist(int k)
     {
+        dijkstra(k, cp, &dist[k]);
+
+        this->F[k] = 0;
+        for (int p=0; p<N; p++)
+            this->F[k] += dist[k][p]-dist[D][p];
+    }
+
+    // R[m]==k の辺を使わない、pからの各頂点への距離を求める。
+    void dijkstra(int k, int p, vector<long long> *dist)
+    {
         static priority_queue<pair<long long, int>> Q;
         static vector<char> F;
 
-        for (int p=0; p<N; p++)
+        for (int i=0; i<N; i++)
+            (*dist)[i] = oo;
+
+        F.resize(N);
+        for (int i=0; i<N; i++)
+            F[i] = 0;
+
+        (*dist)[p] = 0;
+        Q.push({0, p});
+
+        while (!Q.empty())
         {
-            for (int i=0; i<N; i++)
-                dist[k][p][i] = oo;
+            int x = Q.top().second;
+            long long qd = -Q.top().second;
+            Q.pop();
 
-            F.resize(N);
-            for (int i=0; i<N; i++)
-                F[i] = 0;
+            if (F[x]!=0)
+                continue;
+            F[x] = 1;
 
-            dist[k][p][p] = 0;
-            Q.push({0, p});
+            if (qd>(*dist)[x])
+                continue;
 
-            while (!Q.empty())
+            for (int i=0; i<(int)E[x].size(); i++)
             {
-                int x = Q.top().second;
-                long long qd = -Q.top().second;
-                Q.pop();
-
-                if (F[x]!=0)
-                    continue;
-                F[x] = 1;
-
-                if (qd>dist[k][p][x])
-                    continue;
-
-                for (int i=0; i<(int)E[x].size(); i++)
+                int e = E[x][i];
+                int ei = Ei[x][i];
+                if (R[ei]!=k)
                 {
-                    int e = E[x][i];
-                    int ei = Ei[x][i];
-                    if (R[ei]!=k)
+                    long long d = (*dist)[x]+W[ei];
+                    if (d<(*dist)[e])
                     {
-                        long long d = dist[k][p][x]+W[ei];
-                        if (d<dist[k][p][e])
-                        {
-                            dist[k][p][e] = d;
-                            Q.push({-d, e});
-                        }
+                        (*dist)[e] = d;
+                        Q.push({-d, e});
                     }
                 }
             }
         }
-
-        this->F[k] = 0;
-        for (int i=0; i<N; i++)
-            for (int j=0; j<N; j++)
-                if (i!=j)
-                    this->F[k] += dist[k][i][j]-dist[D][i][j];
     }
 
     long long calc_score()
@@ -126,14 +138,28 @@ struct City
         long long s = 0;
         for (int k=0; k<D; k++)
             s += F[k];
+        long long den = D*(N-1);
+        return (1000*s+den/2)/den;
+    }
+
+    long long calc_score_orig()
+    {
+        vector<vector<vector<long long>>> dist(D+1, vector<vector<long long>>(N, vector<long long>(N)));
+        for (int k=0; k<=D; k++)
+            for (int p=0; p<N; p++)
+                dijkstra(k, p, &dist[k][p]);
+
+        long long s = 0;
+        for (int k=0; k<D; k++)
+            for (int i=0; i<N; i++)
+                for (int j=0; j<N; j++)
+                    s += dist[k][i][j]-dist[D][i][j];
         long long den = D*N*(N-1);
-        s = (1000*s+den/2)/den;
-        return s;
+        return (1000*s+den/2)/den;
     }
 };
 
 const double TIME = 5.0;
-//const double TIME = 3600.0;
 
 const int expN = 1024;
 const double expX = 16;
@@ -189,7 +215,7 @@ int main()
 
     system_clock::time_point start = system_clock::now();
 
-    City city(N, M, D, K, U, V, W);
+    City city(N, M, D, K, U, V, W, X, Y);
 
     my_exp_init();
 
@@ -201,13 +227,13 @@ int main()
     int iter;
     for (iter=0; ; iter++)
     {
-        if (true)
+        if (iter%256==0)
         {
             system_clock::time_point now = system_clock::now();
             double time = chrono::duration_cast<chrono::nanoseconds>(now-start).count()*1e-9/TIME;
             if (time>1.0)
                 break;
-            double temp = 1e6*(1.0-time);
+            double temp = 1e3*(1.0-time);
             temp_inv = 1./temp;
         }
 
@@ -246,15 +272,14 @@ int main()
         }
     }
 
-    //cerr<<"Iteration: "<<iter<<endl;
-    //cerr<<"Score: "<<best_score<<endl;
+#ifdef TOPCODER_LOCAL
     //cerr<<"Time: "<<chrono::duration_cast<chrono::nanoseconds>(system_clock::now()-start).count()*1e-9<<endl;
 
-    fprintf(stderr, " %4d %4d %2d %3d %8d %16lld\n", N, M, D, K, iter, best_score);
+    city.R = best_R;
+    fprintf(stderr, " %4d %4d %2d %3d %8d %16lld %16lld\n", N, M, D, K, iter, best_score, city.calc_score_orig());
+#endif
 
     for (int i=0; i<M; i++)
         cout<<(i==0?"":" ")<<best_R[i]+1;
     cout<<endl;
 }
-
-// あああああああああ
