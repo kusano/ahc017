@@ -4,6 +4,7 @@
 #include <utility>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 using namespace std;
 using namespace std::chrono;
 
@@ -132,6 +133,7 @@ struct City
 };
 
 const double TIME = 5.0;
+//const double TIME = 3600.0;
 
 const int expN = 1024;
 const double expX = 16;
@@ -231,8 +233,9 @@ int main()
         {
             score = score2;
 
-            if (score>best_score)
+            if (score<best_score)
             {
+                //cerr<<score<<endl;
                 best_score = score;
                 best_R = city.R;
             }
@@ -243,12 +246,14 @@ int main()
         }
     }
 
-    cerr<<"Iteration: "<<iter<<endl;
-    cerr<<"Score: "<<best_score<<endl;
-    cerr<<"Time: "<<chrono::duration_cast<chrono::nanoseconds>(system_clock::now()-start).count()*1e-9<<endl;
+    //cerr<<"Iteration: "<<iter<<endl;
+    //cerr<<"Score: "<<best_score<<endl;
+    //cerr<<"Time: "<<chrono::duration_cast<chrono::nanoseconds>(system_clock::now()-start).count()*1e-9<<endl;
+
+    fprintf(stderr, " %4d %4d %2d %3d %8d %16lld\n", N, M, D, K, iter, best_score);
 
     for (int i=0; i<M; i++)
-        cout<<(i==0?"":" ")<<city.R[i]+1;
+        cout<<(i==0?"":" ")<<best_R[i]+1;
     cout<<endl;
 }
 
