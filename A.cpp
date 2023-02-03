@@ -99,14 +99,9 @@ struct City
     void dijkstra(int k, int p, vector<long long> *dist)
     {
         static priority_queue<pair<long long, int>> Q;
-        static vector<char> F;
 
         for (int i=0; i<N; i++)
             (*dist)[i] = oo;
-
-        F.resize(N);
-        for (int i=0; i<N; i++)
-            F[i] = 0;
 
         (*dist)[p] = 0;
         Q.push({0, p});
@@ -114,12 +109,8 @@ struct City
         while (!Q.empty())
         {
             int x = Q.top().second;
-            long long qd = -Q.top().second;
+            long long qd = -Q.top().first;
             Q.pop();
-
-            if (F[x]!=0)
-                continue;
-            F[x] = 1;
 
             if (qd>(*dist)[x])
                 continue;
@@ -130,7 +121,7 @@ struct City
                 int ei = Ei[x][i];
                 if (R[ei]!=k)
                 {
-                    long long d = (*dist)[x]+W[ei];
+                    long long d = qd+W[ei];
                     if (d<(*dist)[e])
                     {
                         (*dist)[e] = d;
