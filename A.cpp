@@ -59,35 +59,18 @@ struct City
     long long calc_diff(int m, int d)
     {
         long long diff = 0;
-        static vector<long long> T(N);
 
-        dijkstra(R[m], U[m], &T);
-        for (int i=0; i<N; i++)
-            diff -= T[i];
-        dijkstra(R[m], V[m], &T);
-        for (int i=0; i<N; i++)
-            diff -= T[i];
-        dijkstra(d, U[m], &T);
-        for (int i=0; i<N; i++)
-            diff -= T[i];
-        dijkstra(d, V[m], &T);
-        for (int i=0; i<N; i++)
-            diff -= T[i];
+        diff -= dijkstra(R[m], U[m]);
+        diff -= dijkstra(R[m], V[m]);
+        diff -= dijkstra(d, U[m]);
+        diff -= dijkstra(d, V[m]);
 
         int old = R[m];
         R[m] = d;
-        dijkstra(old, U[m], &T);
-        for (int i=0; i<N; i++)
-            diff += T[i];
-        dijkstra(old, V[m], &T);
-        for (int i=0; i<N; i++)
-            diff += T[i];
-        dijkstra(d, U[m], &T);
-        for (int i=0; i<N; i++)
-            diff += T[i];
-        dijkstra(d, V[m], &T);
-        for (int i=0; i<N; i++)
-            diff += T[i];
+        diff += dijkstra(old, U[m]);
+        diff += dijkstra(old, V[m]);
+        diff += dijkstra(d, U[m]);
+        diff += dijkstra(d, V[m]);
         R[m] = old;
 
         long long den = 2*D*(N-1);
@@ -95,15 +78,16 @@ struct City
         return diff;
     }
 
-    // R[m]==k の辺を使わない、pからの各頂点への距離を求める。
-    void dijkstra(int k, int p, vector<long long> *dist)
+    // R[m]==k の辺を使わない、pからの各頂点への距離の合計を求める。
+    long long dijkstra(int k, int p)
     {
+        static vector<long long> D(N);
         static priority_queue<long long> Q;
 
         for (int i=0; i<N; i++)
-            (*dist)[i] = oo;
+            D[i] = oo;
 
-        (*dist)[p] = 0;
+        D[p] = 0;
         Q.push(-p);
 
         while (!Q.empty())
@@ -113,7 +97,7 @@ struct City
             int x = q&0xffff;
             long long qd = q>>16;
 
-            if (qd>(*dist)[x])
+            if (qd>D[x])
                 continue;
 
             for (int i=0; i<(int)E[x].size(); i++)
@@ -123,28 +107,31 @@ struct City
                 if (R[ei]!=k)
                 {
                     long long d = qd+W[ei];
-                    if (d<(*dist)[e])
+                    if (d<D[e])
                     {
-                        (*dist)[e] = d;
+                        D[e] = d;
                         Q.push(-(d<<16|e));
                     }
                 }
             }
         }
+
+        long long s = 0;
+        for (long long d: D)
+            s += d;
+        return s;
     }
 
     long long calc_score_orig()
     {
-        vector<vector<vector<long long>>> dist(D+1, vector<vector<long long>>(N, vector<long long>(N)));
-        for (int k=0; k<=D; k++)
-            for (int p=0; p<N; p++)
-                dijkstra(k, p, &dist[k][p]);
-
         long long s = 0;
-        for (int k=0; k<D; k++)
-            for (int i=0; i<N; i++)
-                for (int j=0; j<N; j++)
-                    s += dist[k][i][j]-dist[D][i][j];
+        for (int p=0; p<N; p++)
+        {
+            for (int k=0; k<D; k++)
+                s += dijkstra(k, p);
+            s -= dijkstra(D, p)*D;
+        }
+
         long long den = D*N*(N-1);
         return (1000*s+den/2)/den;
     }
