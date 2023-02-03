@@ -90,6 +90,9 @@ struct City
         D[p] = 0;
         Q.push(-p);
 
+        long long s = 0;
+        int c = 1;
+
         while (!Q.empty())
         {
             long long q = -Q.top();
@@ -99,6 +102,9 @@ struct City
 
             if (qd>D[x])
                 continue;
+
+            s += D[x];
+            c++;
 
             for (int i=0; i<(int)E[x].size(); i++)
             {
@@ -116,9 +122,7 @@ struct City
             }
         }
 
-        long long s = 0;
-        for (long long d: D)
-            s += d;
+        s += (N-c)*oo;
         return s;
     }
 
