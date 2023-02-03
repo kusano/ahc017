@@ -18,36 +18,30 @@ struct City
     int M;
     int D;
     int K;
+    vector<int> U;
+    vector<int> V;
     vector<vector<int>> E;
     vector<vector<int>> Ei;
     vector<long long> W;
     vector<int> X;
     vector<int> Y;
     vector<int> R;
-    vector<vector<long long>> dist;
-    vector<long long> F; // *N(N-1)
     vector<int> C;
-    // 中央にもっとも近い頂点。
-    int cp;
-    vector<long long> undo_dist0, undo_dist1;
-    int undo_d;
 
     City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W, const vector<int> &X, const vector<int> &Y)
         : N(N)
         , M(M)
         , D(D)
         , K(K)
+        , U(U)
+        , V(V)
         , E(N)
         , Ei(N)
         , W(W)
         , X(X)
         , Y(Y)
         , R(M)
-        , dist(D+1, vector<long long>(N))
-        , F(D+1)
         , C(D)
-        , undo_dist0(N)
-        , undo_dist1(N)
     {
         for (int i=0; i<M; i++)
         {
@@ -59,58 +53,46 @@ struct City
             R[i] = i%D;
             C[R[i]]++;
         }
-
-        cp = 0;
-        for (int p=1; p<N; p++)
-            if ((X[p]-500)*(X[p]-500)+(Y[p]-500)*(Y[p]-500) < (X[cp]-500)*(X[cp]-500)+(Y[cp]-500)*(Y[cp]-500))
-                cp = p;
-
-        update_dist(D);
-        for (int d=0; d<D; d++)
-            update_dist(d);
     }
 
-    void set(int m, int d)
+    // R[m] を d にするときのコストの変化を返す。
+    long long calc_diff(int m, int d)
     {
-        C[R[m]]--;
+        long long diff = 0;
+        static vector<long long> T(N);
+
+        dijkstra(R[m], U[m], &T);
+        for (int i=0; i<N; i++)
+            diff -= T[i];
+        dijkstra(R[m], V[m], &T);
+        for (int i=0; i<N; i++)
+            diff -= T[i];
+        dijkstra(d, U[m], &T);
+        for (int i=0; i<N; i++)
+            diff -= T[i];
+        dijkstra(d, V[m], &T);
+        for (int i=0; i<N; i++)
+            diff -= T[i];
+
         int old = R[m];
         R[m] = d;
-        C[R[m]]++;
+        dijkstra(old, U[m], &T);
+        for (int i=0; i<N; i++)
+            diff += T[i];
+        dijkstra(old, V[m], &T);
+        for (int i=0; i<N; i++)
+            diff += T[i];
+        dijkstra(d, U[m], &T);
+        for (int i=0; i<N; i++)
+            diff += T[i];
+        dijkstra(d, V[m], &T);
+        for (int i=0; i<N; i++)
+            diff += T[i];
+        R[m] = old;
 
-        undo_dist0 = dist[old];
-        undo_dist1 = dist[d];
-        undo_d = old;
-
-        update_dist(old);
-        update_dist(d);
-    }
-
-    void undo(int m)
-    {
-        C[R[m]]--;
-        int old = R[m];
-        R[m] = undo_d;
-        C[R[m]]++;
-
-        dist[undo_d] = undo_dist0;
-        dist[old] = undo_dist1;
-
-        this->F[undo_d] = 0;
-        this->F[old] = 0;
-        for (int p=0; p<N; p++)
-        {
-            this->F[undo_d] += dist[undo_d][p]-dist[D][p];
-            this->F[old] += dist[old][p]-dist[D][p];
-        }
-    }
-
-    void update_dist(int k)
-    {
-        dijkstra(k, cp, &dist[k]);
-
-        this->F[k] = 0;
-        for (int p=0; p<N; p++)
-            this->F[k] += dist[k][p]-dist[D][p];
+        long long den = 2*D*(N-1);
+        diff = (1000*diff+den/2)/den;
+        return diff;
     }
 
     // R[m]==k の辺を使わない、pからの各頂点への距離を求める。
@@ -159,15 +141,6 @@ struct City
         }
     }
 
-    long long calc_score()
-    {
-        long long s = 0;
-        for (int k=0; k<D; k++)
-            s += F[k];
-        long long den = D*(N-1);
-        return (1000*s+den/2)/den;
-    }
-
     long long calc_score_orig()
     {
         vector<vector<vector<long long>>> dist(D+1, vector<vector<long long>>(N, vector<long long>(N)));
@@ -207,6 +180,11 @@ void my_exp_init()
 //  exp(t)*0x80000000;
 int my_exp(double x)
 {
+    if (x>=0.0)
+        return 0x7fffffff;
+    if (x<-expX)
+        return 0;
+
     int x2 = int(x/-expX*expN+.5);
     if (x2<0)
         return expT[0];
@@ -245,7 +223,7 @@ int main()
 
     my_exp_init();
 
-    long long score = city.calc_score();
+    long long score = 0;
     long long best_score = score;
     vector<int> best_R = city.R;
 
@@ -275,26 +253,23 @@ int main()
         }
 
         int old_d = city.R[m];
-        city.set(m, d);
 
-        long long score2 = city.calc_score();
-
-        if (score2<score ||
-            //exp((score-score2)*temp_inv)*0x80000000>xor64())
-            my_exp((score-score2)*temp_inv)>xor64())
+        long long diff = city.calc_diff(m, d);
+        if (diff<0 ||
+            //exp(-diff*temp_inv)*0x80000000>xor64())
+            my_exp(-diff*temp_inv)>xor64())
         {
-            score = score2;
+            city.C[city.R[m]]--;
+            city.R[m] = d;
+            city.C[city.R[m]]++;
+
+            score += diff;
 
             if (score<best_score)
             {
-                //cerr<<score<<endl;
                 best_score = score;
                 best_R = city.R;
             }
-        }
-        else
-        {
-            city.undo(m);
         }
     }
 
