@@ -98,19 +98,20 @@ struct City
     // R[m]==k の辺を使わない、pからの各頂点への距離を求める。
     void dijkstra(int k, int p, vector<long long> *dist)
     {
-        static priority_queue<pair<long long, int>> Q;
+        static priority_queue<long long> Q;
 
         for (int i=0; i<N; i++)
             (*dist)[i] = oo;
 
         (*dist)[p] = 0;
-        Q.push({0, p});
+        Q.push(-p);
 
         while (!Q.empty())
         {
-            int x = Q.top().second;
-            long long qd = -Q.top().first;
+            long long q = -Q.top();
             Q.pop();
+            int x = q&0xffff;
+            long long qd = q>>16;
 
             if (qd>(*dist)[x])
                 continue;
@@ -125,7 +126,7 @@ struct City
                     if (d<(*dist)[e])
                     {
                         (*dist)[e] = d;
-                        Q.push({-d, e});
+                        Q.push(-(d<<16|e));
                     }
                 }
             }
