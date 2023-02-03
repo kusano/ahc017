@@ -58,19 +58,22 @@ struct City
     // R[m] を d にするときのコストの変化を返す。
     long long calc_diff(int m, int d)
     {
+        // 周囲c個のみを見る。
+        int c = 128;
+
         long long diff = 0;
 
-        diff -= dijkstra(R[m], U[m]);
-        diff -= dijkstra(R[m], V[m]);
-        diff -= dijkstra(d, U[m]);
-        diff -= dijkstra(d, V[m]);
+        diff -= dijkstra(R[m], U[m], c);
+        diff -= dijkstra(R[m], V[m], c);
+        diff -= dijkstra(d, U[m], c);
+        diff -= dijkstra(d, V[m], c);
 
         int old = R[m];
         R[m] = d;
-        diff += dijkstra(old, U[m]);
-        diff += dijkstra(old, V[m]);
-        diff += dijkstra(d, U[m]);
-        diff += dijkstra(d, V[m]);
+        diff += dijkstra(old, U[m], c);
+        diff += dijkstra(old, V[m], c);
+        diff += dijkstra(d, U[m], c);
+        diff += dijkstra(d, V[m], c);
         R[m] = old;
 
         long long den = 2*D*(N-1);
@@ -79,7 +82,7 @@ struct City
     }
 
     // R[m]==k の辺を使わない、pからの各頂点への距離の合計を求める。
-    long long dijkstra(int k, int p)
+    long long dijkstra(int k, int p, int n)
     {
         static vector<long long> D(N);
         static priority_queue<long long> Q;
@@ -91,7 +94,7 @@ struct City
         Q.push(-p);
 
         long long s = 0;
-        int c = 1;
+        int c = 0;
 
         while (!Q.empty())
         {
@@ -105,6 +108,8 @@ struct City
 
             s += D[x];
             c++;
+            if (c>=n)
+                break;
 
             for (int i=0; i<(int)E[x].size(); i++)
             {
@@ -121,8 +126,10 @@ struct City
                 }
             }
         }
+        while (!Q.empty())
+            Q.pop();
 
-        s += (N-c)*oo;
+        s += (n-c)*oo;
         return s;
     }
 
@@ -132,8 +139,8 @@ struct City
         for (int p=0; p<N; p++)
         {
             for (int k=0; k<D; k++)
-                s += dijkstra(k, p);
-            s -= dijkstra(D, p)*D;
+                s += dijkstra(k, p, N);
+            s -= dijkstra(D, p, N)*D;
         }
 
         long long den = D*N*(N-1);
