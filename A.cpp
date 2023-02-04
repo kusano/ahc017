@@ -23,8 +23,9 @@ struct City
     vector<long long> W;
     vector<int> R;
     vector<int> C;
+    vector<vector<int>> dist;
 
-    City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W)
+    City(int N, int M, int D, int K, const vector<int> &U, const vector<int> &V, const vector<long long> &W, const vector<int> &X, const vector<int> &Y)
         : N(N)
         , M(M)
         , D(D)
@@ -36,6 +37,7 @@ struct City
         , W(W)
         , R(M)
         , C(D)
+        , dist(N, vector<int>(N))
     {
         for (int i=0; i<M; i++)
         {
@@ -47,6 +49,10 @@ struct City
             R[i] = i%D;
             C[R[i]]++;
         }
+
+        for (int i=0; i<N; i++)
+            for (int j=0; j<N; j++)
+                dist[i][j] = (X[i]-X[j])*(X[i]-X[j])+(Y[i]-Y[j])*(Y[i]-Y[j]);
     }
 
     void set(int m, int d)
@@ -142,10 +148,10 @@ struct City
         }
 
         U[u] = 0;
-        Q.push(-(oo<<16|u));
+        Q.push(-(0<<16|u));
         up[u] = 1;
         V[v] = 0;
-        Q.push(-(oo<<16|v));
+        Q.push(-(0<<16|v));
         up[u] = 1;
 
         while (!Q.empty())
@@ -161,7 +167,7 @@ struct City
             {
                 int e = E[x][i];
                 int ei = Ei[x][i];
-                if (R[ei]!=k)
+                if (R[ei]!=k && dist[u][e]<300*300)
                 {
                     long long du = U[x]+W[ei];
                     long long dv = V[x]+W[ei];
@@ -169,7 +175,7 @@ struct City
                     {
                         U[e] = min(U[e], du);
                         V[e] = min(V[e], dv);
-                        Q.push(-((du+dv)<<16|e));
+                        Q.push(-(min(du,dv)<<16|e));
                         up[e] = 1;
                     }
                 }
@@ -263,7 +269,7 @@ int main()
 
     system_clock::time_point start = system_clock::now();
 
-    City city(N, M, D, K, U, V, W);
+    City city(N, M, D, K, U, V, W, X, Y);
 
     my_exp_init();
 
