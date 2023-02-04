@@ -130,10 +130,9 @@ struct City
     void dijkstra2(int k, int u, int v, vector<long long> *U_, vector<long long> *V_)
     {
         static priority_queue<long long> Q;
-        vector<char> up(N);
-
-        vector<long long> &U = *U_;
-        vector<long long> &V = *V_;
+        static vector<char> up(N);
+        static vector<long long> U(N);
+        static vector<long long> V(N);
 
         for (int i=0; i<N; i++)
         {
@@ -176,6 +175,9 @@ struct City
                 }
             }
         }
+
+        *U_ = U;
+        *V_ = V;
     }
 
     long long calc_score()
@@ -200,7 +202,7 @@ struct City
     }
 };
 
-const double TIME = 5.0;
+const double TIME = 5.5;
 
 const int expN = 1024;
 const double expX = 16;
@@ -298,7 +300,8 @@ int main()
                 break;
         }
 
-        random_shuffle(ds.begin(), ds.end());
+        for (int i=(int)ds.size()-1; i>0; i--)
+            swap(ds[i], ds[xor64()%(i+1)]);
         if (ds.size()>8)
             ds.resize(8);
 
