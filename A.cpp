@@ -55,34 +55,38 @@ struct City
         }
     }
 
-    // R[m] を d にするときのコストの変化を返す。
-    long long calc_diff(int m, int d)
+    // R[m] を d[i] にするときのコストの変化を返す。
+    vector<long long> calc_diff(int m, vector<int> d)
     {
-        // 周囲c個のみを見る。
-        int c = 128;
+        static vector<long long> D0U(N), D0V(N), D1U(N), D1V(N);
 
-        long long diff = 0;
-
-        diff -= dijkstra(R[m], U[m], c);
-        diff -= dijkstra(R[m], V[m], c);
-        diff -= dijkstra(d, U[m], c);
-        diff -= dijkstra(d, V[m], c);
+        dijkstra2(R[m], U[m], V[m], &D0U, &D0V);
 
         int old = R[m];
-        R[m] = d;
-        diff += dijkstra(old, U[m], c);
-        diff += dijkstra(old, V[m], c);
-        diff += dijkstra(d, U[m], c);
-        diff += dijkstra(d, V[m], c);
-        R[m] = old;
+        vector<long long> ret;
+        for (int t: d)
+        {
+            int old = R[m];
+            R[m] = t;
+            dijkstra2(t, U[m], V[m], &D1U, &D1V);
 
-        long long den = 2*D*(N-1);
-        diff = (1000*diff+den/2)/den;
-        return diff;
+            long long diff = 0;
+            for (int p=0; p<N; p++)
+            {
+                diff -= max(0LL, abs(D0U[p]-D0V[p])-W[m]);
+                diff += max(0LL, abs(D1U[p]-D1V[p])-W[m]);
+            }
+
+            long long den = 2*D*(N-1);
+            diff = (1000*diff+den/2)/den;
+            ret.push_back(diff);
+        }
+        R[m] = old;
+        return ret;
     }
 
     // R[m]==k の辺を使わない、pからの各頂点への距離の合計を求める。
-    long long dijkstra(int k, int p, int n)
+    long long dijkstra(int k, int p, int n, vector<long long> *D_)
     {
         static vector<long long> D(N);
         static priority_queue<long long> Q;
@@ -129,8 +133,63 @@ struct City
         while (!Q.empty())
             Q.pop();
 
+        if (D_!=nullptr)
+            *D_ = D;
+
         s += (n-c)*oo;
         return s;
+    }
+
+    // R[m]==k の辺を使わない、uとvからの各頂点への距離の合計を求める。
+    void dijkstra2(int k, int u, int v, vector<long long> *U, vector<long long> *V)
+    {
+        vector<char> up(N);
+        static priority_queue<long long> Q;
+
+        for (int i=0; i<N; i++)
+        {
+            up[i] = 0;
+            (*U)[i] = oo;
+            (*V)[i] = oo;
+        }
+
+        (*U)[u] = 0;
+        up[u] = 1;
+        Q.push(-(oo<<16|u));
+        (*V)[v] = 0;
+        up[u] = 1;
+        Q.push(-(oo<<16|v));
+
+        int c = 0;
+        while (!Q.empty())
+        {
+            int x = -Q.top()&0xffff;
+            Q.pop();
+
+            if (up[x]==0)
+                continue;
+            up[x] = 0;
+
+            for (int i=0; i<(int)E[x].size(); i++)
+            {
+                int e = E[x][i];
+                int ei = Ei[x][i];
+                if (R[ei]!=k)
+                {
+                    long long du = (*U)[x]+W[ei];
+                    long long dv = (*V)[x]+W[ei];
+                    if (du<(*U)[e] || dv<(*V)[e])
+                    {
+                        if (du<(*U)[e])
+                            (*U)[e] = du;
+                        if (dv<(*V)[e])
+                            (*V)[e] = dv;
+                        up[e] = true;
+                        Q.push(-((du+dv)<<16|e));
+                    }
+                }
+            }
+        }
     }
 
     long long calc_score_orig()
@@ -139,8 +198,8 @@ struct City
         for (int p=0; p<N; p++)
         {
             for (int k=0; k<D; k++)
-                s += dijkstra(k, p, N);
-            s -= dijkstra(D, p, N)*D;
+                s += dijkstra(k, p, N, nullptr);
+            s -= dijkstra(D, p, N, nullptr)*D;
         }
 
         long long den = D*N*(N-1);
@@ -232,19 +291,43 @@ int main()
         }
 
         int m;
-        int d;
+        vector<int> ds;
+
         while (true)
         {
             m = xor64()%M;
-            d = xor64()%D;
 
-            if (city.R[m]!=d && city.C[d]<K)
-                break;
+            vector<int> T;
+            for (int d=0; d<D; d++)
+                if (city.R[m]!=d && city.C[d]<K)
+                    T.push_back(d);
+
+            if (T.empty())
+                continue;
+
+            vector<bool> U(T.size());
+            int n = min((int)T.size(), 8);
+            for (int i=0; i<n; i++)
+            {
+                int d;
+                do
+                    d = xor64()%T.size();
+                while (U[d]);
+                ds.push_back(T[d]);
+            }
+            break;
         }
 
-        int old_d = city.R[m];
+        vector<long long> diffs = city.calc_diff(m, ds);
+        long long diff = diffs[0];
+        int d = ds[0];
+        for (int i=1; i<(int)ds.size(); i++)
+            if (diffs[i]<diff)
+            {
+                diff = diffs[i];
+                d = ds[i];
+            }
 
-        long long diff = city.calc_diff(m, d);
         if (diff<0 ||
             //exp(-diff*temp_inv)*0x80000000>xor64())
             my_exp(-diff*temp_inv)>xor64())
