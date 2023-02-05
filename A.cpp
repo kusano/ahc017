@@ -277,6 +277,7 @@ int main()
     long long best_score = score;
     vector<int> best_R = city.R;
 
+    double temp;
     double temp_inv;
     int iter;
     for (iter=0; ; iter++)
@@ -287,7 +288,7 @@ int main()
             double time = chrono::duration_cast<chrono::nanoseconds>(now-start).count()*1e-9/TIME;
             if (time>1.0)
                 break;
-            double temp = 1e3*(1.0-time);
+            temp = 1e3*max(0.0, 0.9-time);
             temp_inv = 1./temp;
         }
 
@@ -323,7 +324,7 @@ int main()
 
         if (diff<0 ||
             //exp(-diff*temp_inv)*0x80000000>xor64())
-            my_exp(-diff*temp_inv)>xor64())
+            (temp>0.0 && my_exp(-diff*temp_inv)>xor64()))
         {
             city.set(m, d);
 
