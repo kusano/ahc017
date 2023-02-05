@@ -208,7 +208,7 @@ struct City
     }
 };
 
-const double TIME = 5.5;
+const double TIME = 5.8;
 
 const int expN = 1024;
 const double expX = 16;
